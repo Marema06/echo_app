@@ -10,7 +10,6 @@ import {
   Mic, Sparkles, Grid3X3, Brain,
   ArrowRight, CheckCircle2,
 } from 'lucide-react';
-import { GoogleButton } from '@/components/ui/google-button';
 
 const DEMO_TILES: { emotion: EmotionName; intensity: number; style: VisualizationStyle; label: string }[] = [
   { emotion: 'sérénité', intensity: 7, style: 'aquarelle', label: 'Sérénité' },
@@ -107,25 +106,22 @@ export default function HomePage() {
             Analysé par l&apos;IA, archivé en mosaïque, rétrospectivé chaque mois et chaque année.
           </p>
 
-          <div className="flex flex-col gap-3 w-full max-w-sm">
-            <GoogleButton next="/dashboard" />
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 bg-ink-900 text-white rounded-full py-3.5 px-7 text-base font-medium
-                           hover:-translate-y-0.5 transition-all shadow-pop"
-              >
-                Créer un compte
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 border border-ink-900/[0.12] dark:border-ink-600/30 rounded-full py-3.5 px-7 text-base
-                           text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800/50 transition-all"
-              >
-                Comment ça marche
-              </a>
-            </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 bg-ink-900 text-white rounded-full py-3.5 px-7 text-base font-medium
+                         hover:-translate-y-0.5 transition-all shadow-pop"
+            >
+              Créer un compte
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="#how-it-works"
+              className="inline-flex items-center gap-2 border border-ink-900/[0.12] dark:border-ink-600/30 rounded-full py-3.5 px-7 text-base
+                         text-ink-700 dark:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800/50 transition-all"
+            >
+              Comment ça marche
+            </a>
           </div>
 
         </div>
