@@ -1,8 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { EchoLogo } from '@/components/ui/echo-logo';
@@ -38,7 +36,7 @@ const PLANS = {
   },
 };
 
-export default function UpgradePage() {
+function UpgradeContent() {
   const searchParams = useSearchParams();
   const plan = (searchParams.get('plan') ?? 'premium') as 'premium' | 'studio';
   const selectedPlan = PLANS[plan] ?? PLANS.premium;
@@ -144,5 +142,13 @@ export default function UpgradePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <UpgradeContent />
+    </Suspense>
   );
 }

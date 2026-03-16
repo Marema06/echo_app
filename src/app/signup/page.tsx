@@ -1,8 +1,6 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { EchoLogo } from '@/components/ui/echo-logo';
@@ -10,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { ChevronLeft, Mail } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
-export default function SignupPage() {
+function SignupContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -182,5 +180,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <SignupContent />
+    </Suspense>
   );
 }
