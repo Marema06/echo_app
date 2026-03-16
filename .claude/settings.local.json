@@ -20,7 +20,10 @@
       "Bash(npx vercel login)",
       "Bash(git add .)",
       "Bash(git commit -m \"fix: rename icon route to .tsx for JSX support\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(git commit -m \"fix: replace JSX icon route with pure SVG, no tsx needed\")",
+      "Bash(git remote add journal https://github.com/Marema06/echo_journal.git)",
+      "Bash(git push journal main)"
     ]
   }
 }
