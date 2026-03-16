@@ -2,8 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // This endpoint is called daily by Vercel Cron
 // Authorization: Bearer token matches CRON_SECRET env variable
 export async function GET(request: Request) {
@@ -11,6 +9,8 @@ export async function GET(request: Request) {
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
   // Use service role key to bypass RLS for cron job
   const supabase = createClient(
