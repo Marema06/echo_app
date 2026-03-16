@@ -7,6 +7,7 @@ import { EchoLogo } from '@/components/ui/echo-logo';
 import { Spinner } from '@/components/ui/spinner';
 import { ChevronLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { GoogleButton } from '@/components/ui/google-button';
 
 function LoginContent() {
   const [email, setEmail] = useState('');
@@ -68,6 +69,14 @@ function LoginContent() {
               {error}
             </div>
           )}
+
+          <GoogleButton next={next} />
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-ink-200 dark:bg-ink-700" />
+            <span className="text-xs text-ink-400">ou</span>
+            <div className="flex-1 h-px bg-ink-200 dark:bg-ink-700" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="flex flex-col gap-2">
