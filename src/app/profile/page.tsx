@@ -36,11 +36,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [defaultStyle, setDefaultStyle] = useState<VisualizationStyle>('aquarelle');
   const toast = useToast();
-  const supabase = createClient();
 
   useEffect(() => {
     async function load() {
       try {
+        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
@@ -62,11 +62,12 @@ export default function ProfilePage() {
       }
     }
     load();
-  }, [supabase, toast]);
+  }, [toast]);
 
   const savePreferences = async () => {
     setSaving(true);
     try {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
