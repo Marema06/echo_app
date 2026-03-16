@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Mic, Sparkles, Wand2, Image, Layers, Crown, ArrowRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, Mic, Sparkles, Wand2, Image, Layers, Crown, ArrowRight, RotateCcw, Clock, Send } from 'lucide-react';
 import { Topbar } from '@/components/layout/topbar';
 import { Spinner } from '@/components/ui/spinner';
 import { useAutoSave } from '@/hooks/use-auto-save';
@@ -13,7 +13,13 @@ import { generateVisualization } from '@/lib/visualization';
 import { VISUALIZATION_STYLES, EMOTION_COLORS, type VisualizationStyle, type Analysis, type EmotionName } from '@/types';
 
 type ImageMode = 'canvas' | 'ai';
-type Step = 'write' | 'preview';
+type Step = 'write' | 'preview' | 'letter';
+
+const DELAY_OPTIONS: { days: 30 | 90 | 365; label: string; sublabel: string }[] = [
+  { days: 30, label: 'Dans 30 jours', sublabel: 'Un mois plus tard' },
+  { days: 90, label: 'Dans 3 mois', sublabel: 'Un trimestre plus tard' },
+  { days: 365, label: 'Dans 1 an', sublabel: 'Un an plus tard' },
+];
 
 interface ResonanceEntry {
   id: string;
@@ -168,8 +174,7 @@ export default function CreatePage() {
 
       clearDraft();
       toast('Tuile ajoutée à votre mosaïque !', 'success');
-      router.push('/dashboard');
-      router.refresh();
+      setStep('letter');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
       setIsSaving(false);
@@ -180,6 +185,77 @@ export default function CreatePage() {
     setStep('write');
     setError('');
   };
+
+  const handleSendLetter = async (delayDays: 30 | 90 | 365) => {
+    if (!analysis || !visualizationUrl) return;
+    try {
+      await fetch('/api/letters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          dominant_emotion: analysis.dominantEmotion,
+          visualization_url: visualizationUrl,
+          delay_days: delayDays,
+        }),
+      });
+      const option = DELAY_OPTIONS.find(o => o.days === delayDays);
+      toast(`Lettre programmée — ${option?.label} 📬`, 'success');
+    } catch {
+      toast('Erreur lors de la programmation', 'error');
+    } finally {
+      router.push('/dashboard');
+      router.refresh();
+    }
+  };
+
+  // ── Letter step ───────────────────────────────────────────
+  if (step === 'letter' && analysis) {
+    const dominantColor = EMOTION_COLORS[analysis.dominantEmotion as EmotionName]?.[0] || '#94a3b8';
+    return (
+      <div className="min-h-screen bg-background pb-12">
+        <Topbar />
+        <main className="max-w-[520px] mx-auto px-6 py-16 space-y-8">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
+              style={{ backgroundColor: `${dominantColor}18` }}>
+              <Clock className="w-7 h-7" style={{ color: dominantColor }} />
+            </div>
+            <h2 className="font-serif text-2xl">Écrire à votre futur vous ?</h2>
+            <p className="text-sm text-ink-500 leading-relaxed">
+              Cette entrée sera envoyée à votre adresse email plus tard,<br />
+              quand vous en aurez peut-être oublié les détails.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {DELAY_OPTIONS.map(option => (
+              <button
+                key={option.days}
+                onClick={() => handleSendLetter(option.days)}
+                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border border-ink-200 dark:border-ink-700
+                           bg-white/80 dark:bg-ink-800/50 hover:border-ink-400 dark:hover:border-ink-500
+                           transition-all group"
+              >
+                <div className="text-left">
+                  <p className="text-sm font-medium text-ink-800 dark:text-ink-200">{option.label}</p>
+                  <p className="text-xs text-ink-400">{option.sublabel}</p>
+                </div>
+                <Send className="w-4 h-4 text-ink-400 group-hover:text-ink-700 dark:group-hover:text-ink-200 transition-colors" />
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => { router.push('/dashboard'); router.refresh(); }}
+            className="w-full text-center text-sm text-ink-400 hover:text-ink-600 transition-colors py-2"
+          >
+            Non merci, aller au tableau de bord
+          </button>
+        </main>
+      </div>
+    );
+  }
 
   // ── Preview step ──────────────────────────────────────────
   if (step === 'preview' && analysis) {
