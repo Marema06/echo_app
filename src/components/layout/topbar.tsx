@@ -32,7 +32,10 @@ export function Topbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 backdrop-blur-md bg-surface-glass border-b border-ink-900/[0.08]">
+      <header
+        className="sticky top-0 z-10 backdrop-blur-md bg-surface-glass border-b border-ink-900/[0.08]"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3.5 group">
             <EchoLogo size={32} />
