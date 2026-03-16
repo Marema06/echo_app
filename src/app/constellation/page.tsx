@@ -48,13 +48,13 @@ function computeStars(entries: Entry[], W: number, H: number): Star[] {
     const emotion = entry.analysis.dominantEmotion;
     const angle = EMOTION_ANGLES[emotion] ?? 0;
     const rng = seeded(entry.id);
-    const scatter = 28 + rng() * 52;
+    const scatter = 30 + rng() * 60;
     const a = rng() * Math.PI * 2;
     return {
       id: entry.id,
       x: cx + Math.cos(angle) * zoneR + Math.cos(a) * scatter,
       y: cy + Math.sin(angle) * zoneR + Math.sin(a) * scatter,
-      r: 2 + (entry.analysis.intensity / 10) * 5,
+      r: 4 + (entry.analysis.intensity / 10) * 6,   // 4–10px
       color: EMOTION_COLORS[emotion as EmotionName]?.[0] ?? '#94a3b8',
       phase: rng() * Math.PI * 2,
       entry,
@@ -85,13 +85,13 @@ function drawFrame(
   const zoneR = Math.min(W, H) * 0.34;
   for (const emotion of EMOTIONS_ORDER) {
     const angle = EMOTION_ANGLES[emotion];
-    const lx = W / 2 + Math.cos(angle) * (zoneR + 70);
-    const ly = H / 2 + Math.sin(angle) * (zoneR + 70);
+    const lx = W / 2 + Math.cos(angle) * (zoneR + 72);
+    const ly = H / 2 + Math.sin(angle) * (zoneR + 72);
     const [r, g, b] = hexRgb(EMOTION_COLORS[emotion as EmotionName]?.[0] ?? '#94a3b8');
-    ctx.font = '10px system-ui, sans-serif';
+    ctx.font = 'bold 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = `rgba(${r},${g},${b},0.4)`;
+    ctx.fillStyle = `rgba(${r},${g},${b},0.65)`;
     ctx.fillText(emotion.toUpperCase(), lx, ly);
   }
 
@@ -129,29 +129,32 @@ function drawFrame(
   for (const star of stars) {
     const isHov = hovered?.id === star.id;
     const isSel = selected?.id === star.id;
-    const twinkle = 0.6 + 0.4 * Math.sin(t * 1.4 + star.phase);
+    const twinkle = 0.75 + 0.25 * Math.sin(t * 1.4 + star.phase);
     const alpha = isHov || isSel ? 1 : twinkle;
-    const displayR = isHov || isSel ? star.r * 1.8 : star.r;
+    const displayR = isHov || isSel ? star.r * 2 : star.r;
     const [r, g, b] = hexRgb(star.color);
 
-    // Glow
-    const glowR = displayR * 4.5;
+    // Outer glow
+    const glowR = displayR * 5;
     const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, glowR);
-    glow.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.35})`);
+    glow.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.5})`);
+    glow.addColorStop(0.4, `rgba(${r},${g},${b},${alpha * 0.2})`);
     glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.beginPath();
     ctx.arc(star.x, star.y, glowR, 0, Math.PI * 2);
     ctx.fillStyle = glow;
     ctx.fill();
 
-    // Core
-    const core = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, displayR);
-    core.addColorStop(0, `rgba(255,255,255,${alpha})`);
-    core.addColorStop(0.4, `rgba(${r},${g},${b},${alpha})`);
-    core.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    // Solid colored core
     ctx.beginPath();
     ctx.arc(star.x, star.y, displayR, 0, Math.PI * 2);
-    ctx.fillStyle = core;
+    ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+    ctx.fill();
+
+    // White center highlight
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, displayR * 0.45, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha * 0.9})`;
     ctx.fill();
   }
 }
