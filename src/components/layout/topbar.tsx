@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { EchoLogo } from '@/components/ui/echo-logo';
-import { BarChart3, LogOut, Plus, CalendarDays, UserCircle } from 'lucide-react';
+import { BarChart3, LogOut, Plus, CalendarDays, UserCircle, Sparkles } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { createClient } from '@/lib/supabase/client';
 
@@ -20,6 +20,7 @@ export function Topbar() {
 
   const navItems = [
     { href: '/dashboard', label: 'Mosaïque' },
+    { href: '/constellation', label: 'Constellation', icon: Sparkles },
     { href: '/stats', label: 'Stats', icon: BarChart3 },
     { href: '/calendar', label: 'Calendrier', icon: CalendarDays },
     { href: '/profile', label: 'Profil', icon: UserCircle },
