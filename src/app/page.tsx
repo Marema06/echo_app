@@ -68,7 +68,10 @@ export default function HomePage() {
         style={{ background: 'radial-gradient(circle, rgba(147, 197, 253, 0.5), transparent 70%)' }} />
 
       {/* Topbar */}
-      <header className="sticky top-0 z-20 backdrop-blur-md bg-surface-glass border-b border-ink-900/[0.08]">
+      <header
+        className="sticky top-0 z-20 backdrop-blur-md bg-surface-glass border-b border-ink-900/[0.08]"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <EchoLogo size={34} />
