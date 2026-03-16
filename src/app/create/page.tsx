@@ -3,25 +3,43 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Mic, Sparkles, Wand2, Image, Layers, Crown, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Mic, Sparkles, Wand2, Image, Layers, Crown, ArrowRight, RotateCcw } from 'lucide-react';
 import { Topbar } from '@/components/layout/topbar';
 import { Spinner } from '@/components/ui/spinner';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import { useSpeech } from '@/hooks/use-speech';
+import { useToast } from '@/components/ui/toast';
 import { generateVisualization } from '@/lib/visualization';
-import { VISUALIZATION_STYLES, type VisualizationStyle, type Analysis } from '@/types';
+import { VISUALIZATION_STYLES, EMOTION_COLORS, type VisualizationStyle, type Analysis, type EmotionName } from '@/types';
 
 type ImageMode = 'canvas' | 'ai';
+type Step = 'write' | 'preview';
+
+const VALENCE_LABEL: Record<string, string> = {
+  positive: 'Positive',
+  negative: 'Négative',
+  neutre: 'Neutre',
+};
+
+const VALENCE_COLOR: Record<string, string> = {
+  positive: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  negative: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  neutre: 'bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-400',
+};
 
 export default function CreatePage() {
+  const [step, setStep] = useState<Step>('write');
   const [text, setText] = useState('');
   const [style, setStyle] = useState<VisualizationStyle>('aquarelle');
   const [imageMode, setImageMode] = useState<ImageMode>('canvas');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [analysisStep, setAnalysisStep] = useState('');
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [visualizationUrl, setVisualizationUrl] = useState('');
   const [error, setError] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const router = useRouter();
+  const toast = useToast();
 
   const { clearDraft, loadDraft } = useAutoSave('echo:draft', text);
 
@@ -40,79 +58,69 @@ export default function CreatePage() {
   const charCount = text.length;
   const isValid = charCount >= 50 && charCount <= 2000;
 
-  const handleSubmit = async () => {
+  // Step 1 → analyze + generate visualization, show preview
+  const handleAnalyze = async () => {
     if (!isValid || isAnalyzing) return;
     setError('');
     setIsAnalyzing(true);
 
     try {
-      // Step 1: Analyze with AI
-      setAnalysisStep('Analyse émotionnelle en cours...');
+      setAnalysisStep('Analyse émotionnelle...');
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       });
 
-      if (!analyzeRes.ok) {
-        throw new Error('Erreur lors de l\'analyse IA');
-      }
+      if (!analyzeRes.ok) throw new Error('Erreur lors de l\'analyse IA');
+      const result: Analysis = await analyzeRes.json();
 
-      const analysis: Analysis = await analyzeRes.json();
-
-      // Step 2: Generate visualization
-      let visualizationUrl: string;
+      let vizUrl: string;
 
       if (imageMode === 'ai') {
-        // AI image generation via Pollinations
-        setAnalysisStep('Génération de l\'image IA... (15-30s)');
+        setAnalysisStep('Génération IA... (15-30s)');
         try {
           const imageRes = await fetch('/api/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              emotion: analysis.dominantEmotion,
-              intensity: analysis.intensity,
+              emotion: result.dominantEmotion,
+              intensity: result.intensity,
               style,
-              keywords: analysis.keywords,
+              keywords: result.keywords,
             }),
           });
-
           if (imageRes.ok) {
             const imageData = await imageRes.json();
-            visualizationUrl = imageData.url;
+            vizUrl = imageData.url;
           } else {
-            // AI failed - fallback to Canvas
-            console.warn('AI image failed, falling back to Canvas');
-            setAnalysisStep('IA indisponible, création Canvas...');
-            visualizationUrl = generateVisualization({
-              emotion: analysis.dominantEmotion,
-              intensity: analysis.intensity,
-              style,
-            });
+            vizUrl = generateVisualization({ emotion: result.dominantEmotion, intensity: result.intensity, style });
           }
         } catch {
-          // Network error - fallback to Canvas
-          console.warn('AI image network error, falling back to Canvas');
-          setAnalysisStep('IA indisponible, création Canvas...');
-          visualizationUrl = generateVisualization({
-            emotion: analysis.dominantEmotion,
-            intensity: analysis.intensity,
-            style,
-          });
+          vizUrl = generateVisualization({ emotion: result.dominantEmotion, intensity: result.intensity, style });
         }
       } else {
-        // Canvas generation (instant)
         setAnalysisStep('Création de la visualisation...');
-        visualizationUrl = generateVisualization({
-          emotion: analysis.dominantEmotion,
-          intensity: analysis.intensity,
-          style,
-        });
+        vizUrl = generateVisualization({ emotion: result.dominantEmotion, intensity: result.intensity, style });
       }
 
-      // Step 3: Save entry
-      setAnalysisStep('Sauvegarde...');
+      setAnalysis(result);
+      setVisualizationUrl(vizUrl);
+      setStep('preview');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+    } finally {
+      setIsAnalyzing(false);
+      setAnalysisStep('');
+    }
+  };
+
+  // Step 2 → save entry
+  const handleSave = async () => {
+    if (!analysis || !visualizationUrl || isSaving) return;
+    setIsSaving(true);
+
+    try {
       const entryRes = await fetch('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,25 +134,160 @@ export default function CreatePage() {
 
       if (!entryRes.ok) {
         const errBody = await entryRes.json().catch(() => ({}));
-        console.error('Save error:', entryRes.status, errBody);
         throw new Error(errBody.error || 'Erreur lors de la sauvegarde');
       }
 
       clearDraft();
-      setSaveSuccess(true);
-      // Redirect after short delay to show success
-      setTimeout(() => {
-        router.push('/dashboard');
-        router.refresh();
-      }, 800);
+      toast('Tuile ajoutée à votre mosaïque !', 'success');
+      router.push('/dashboard');
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-    } finally {
-      setIsAnalyzing(false);
-      setAnalysisStep('');
+      setIsSaving(false);
     }
   };
 
+  const handleEdit = () => {
+    setStep('write');
+    setError('');
+  };
+
+  // ── Preview step ──────────────────────────────────────────
+  if (step === 'preview' && analysis) {
+    const dominantColor = EMOTION_COLORS[analysis.dominantEmotion as EmotionName]?.[0] || '#94a3b8';
+    const topEmotions = [...analysis.emotions]
+      .filter(e => e.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+    const maxScore = topEmotions[0]?.score || 1;
+
+    return (
+      <div className="min-h-screen bg-background pb-12">
+        <Topbar />
+        <main className="max-w-[720px] mx-auto px-6 py-8 space-y-6">
+          <button
+            onClick={handleEdit}
+            className="inline-flex items-center gap-2 text-ink-600 hover:text-ink-900 text-sm transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Modifier mon texte
+          </button>
+
+          <div className="bg-surface-glass backdrop-blur-sm rounded-4xl p-8 shadow-soft space-y-7">
+
+            {/* Header */}
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-ink-400">Résultat de l&apos;analyse</p>
+              <h2 className="font-serif text-2xl mt-1">Votre portrait émotionnel</h2>
+              <p className="text-ink-500 text-sm mt-1">Voici ce que l&apos;IA a perçu dans votre texte.</p>
+            </div>
+
+            {/* Tile + dominant emotion */}
+            <div className="flex gap-6 items-start">
+              <div className="shrink-0">
+                <img
+                  src={visualizationUrl}
+                  alt={analysis.dominantEmotion}
+                  className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl object-cover shadow-pop"
+                />
+              </div>
+              <div className="space-y-3 pt-1">
+                <div>
+                  <p className="text-xs text-ink-400 uppercase tracking-wider mb-1">Émotion dominante</p>
+                  <p
+                    className="font-serif text-3xl font-semibold capitalize"
+                    style={{ color: dominantColor }}
+                  >
+                    {analysis.dominantEmotion}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink-900/[0.07] text-ink-600 text-xs font-medium">
+                    Intensité <strong>{analysis.intensity}/10</strong>
+                  </span>
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${VALENCE_COLOR[analysis.valence]}`}>
+                    {VALENCE_LABEL[analysis.valence]}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Emotion bars */}
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-wider text-ink-400">Émotions détectées</p>
+              {topEmotions.map(e => {
+                const pct = Math.round((e.score / maxScore) * 100);
+                const color = EMOTION_COLORS[e.name as EmotionName]?.[0] || '#94a3b8';
+                return (
+                  <div key={e.name} className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm capitalize text-ink-700 dark:text-ink-300">{e.name}</span>
+                      <span className="text-xs text-ink-400 tabular-nums">{e.score}/10</span>
+                    </div>
+                    <div className="h-2 bg-ink-100 dark:bg-ink-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, backgroundColor: color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Keywords */}
+            {analysis.keywords.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-ink-400">Mots-clés</p>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.keywords.map(kw => (
+                    <span key={kw} className="px-3 py-1 rounded-full bg-ink-900/[0.06] text-ink-600 dark:text-ink-400 text-xs">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3 text-sm text-red-700 dark:text-red-300">
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-1">
+              <button
+                onClick={handleEdit}
+                className="inline-flex items-center justify-center gap-2 border border-ink-900/[0.12] dark:border-ink-600/30
+                           rounded-full py-3 px-6 text-sm text-ink-700 dark:text-ink-300
+                           hover:bg-ink-50 dark:hover:bg-ink-800/50 transition-all"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Modifier mon texte
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 flex items-center justify-center gap-2 bg-ink-900 dark:bg-ink-50 text-white dark:text-ink-900
+                           rounded-full py-3 px-6 text-sm font-medium
+                           hover:-translate-y-0.5 transition-all shadow-pop
+                           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              >
+                {isSaving ? (
+                  <><Spinner size="sm" /> Enregistrement...</>
+                ) : (
+                  <>Ajouter à ma mosaïque <ArrowRight className="w-4 h-4" /></>
+                )}
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Write step ────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background pb-12">
       <Topbar />
@@ -190,13 +333,11 @@ export default function CreatePage() {
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse-ring" />
               </>
             )}
-
             {!speech.isSupported && (
               <span className="text-xs text-ink-400">Non supporté par le navigateur</span>
             )}
           </div>
 
-          {/* Waveform animation */}
           {speech.isRecording && (
             <div className="flex gap-1.5 items-end h-5">
               {[0, 1, 2, 3, 4].map((i) => (
@@ -225,11 +366,10 @@ export default function CreatePage() {
                          focus:outline-none focus:border-ink-400 focus:ring-2 focus:ring-ink-900/5
                          transition-all disabled:opacity-50"
             />
-
             <div className="flex items-center justify-between">
               <div className="inline-flex items-center gap-2 text-xs text-ink-500">
                 <Wand2 className="w-3.5 h-3.5" />
-                L&apos;IA synthétise vos émotions en visualisation unique.
+                L&apos;IA analyse et visualise vos émotions.
               </div>
               <span className={`text-xs tabular-nums ${
                 charCount < 50 ? 'text-amber-600' : charCount > 2000 ? 'text-red-600' : 'text-green-600'
@@ -241,7 +381,7 @@ export default function CreatePage() {
 
           {/* Image mode selector */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-ink-700">Mode de génération</p>
+            <p className="text-sm font-medium text-ink-700 dark:text-ink-300">Mode de génération</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setImageMode('canvas')}
@@ -249,7 +389,7 @@ export default function CreatePage() {
                   relative text-left px-4 py-4 rounded-2xl border text-sm transition-all
                   ${imageMode === 'canvas'
                     ? 'border-ink-900 bg-ink-900 text-white'
-                    : 'border-ink-200 bg-white/80 text-ink-700 hover:border-ink-300'
+                    : 'border-ink-200 bg-white/80 dark:bg-ink-800/60 dark:border-ink-700 text-ink-700 dark:text-ink-300 hover:border-ink-300'
                   }
                 `}
               >
@@ -273,7 +413,7 @@ export default function CreatePage() {
                   relative text-left px-4 py-4 rounded-2xl border text-sm transition-all
                   ${imageMode === 'ai'
                     ? 'border-purple-500 bg-gradient-to-br from-purple-600 to-pink-500 text-white'
-                    : 'border-purple-200 bg-purple-50/50 text-ink-700 hover:border-purple-300'
+                    : 'border-purple-200 bg-purple-50/50 dark:bg-purple-900/10 dark:border-purple-800/40 text-ink-700 dark:text-ink-300 hover:border-purple-300'
                   }
                 `}
               >
@@ -296,7 +436,7 @@ export default function CreatePage() {
 
           {/* Style selector */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-ink-700">Style visuel</p>
+            <p className="text-sm font-medium text-ink-700 dark:text-ink-300">Style visuel</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {VISUALIZATION_STYLES.map((s) => (
                 <button
@@ -306,7 +446,7 @@ export default function CreatePage() {
                     text-left px-4 py-3 rounded-2xl border text-sm transition-all
                     ${style === s.id
                       ? 'border-ink-900 bg-ink-900 text-white dark:bg-ink-50 dark:text-ink-900'
-                      : 'border-ink-200 bg-white/80 text-ink-700 hover:border-ink-300'
+                      : 'border-ink-200 dark:border-ink-700 bg-white/80 dark:bg-ink-800/60 text-ink-700 dark:text-ink-300 hover:border-ink-300'
                     }
                   `}
                 >
@@ -319,31 +459,15 @@ export default function CreatePage() {
             </div>
           </div>
 
-          {saveSuccess && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl px-4 py-3 text-sm text-green-700 dark:text-green-300 flex items-center justify-between">
-              <span>✨ Tuile créée avec succès ! Redirection...</span>
-              <Link href="/dashboard" className="underline font-medium hover:opacity-80">
-                Voir ma mosaïque
-              </Link>
-            </div>
-          )}
-
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3 space-y-3">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3">
               <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 text-sm font-medium text-ink-700 hover:text-ink-900 underline"
-              >
-                Retourner à ma mosaïque
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
             </div>
           )}
 
-          {/* Submit button */}
+          {/* Analyze button */}
           <button
-            onClick={handleSubmit}
+            onClick={handleAnalyze}
             disabled={!isValid || isAnalyzing}
             className={`w-full flex items-center justify-center gap-2 rounded-full py-3.5 px-6 text-sm font-medium
                        hover:-translate-y-0.5 transition-all shadow-pop
@@ -354,15 +478,9 @@ export default function CreatePage() {
                        }`}
           >
             {isAnalyzing ? (
-              <>
-                <Spinner size="sm" />
-                {analysisStep}
-              </>
+              <><Spinner size="sm" />{analysisStep}</>
             ) : (
-              <>
-                {imageMode === 'ai' ? <Image className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                {imageMode === 'ai' ? 'Générer avec l\'IA' : 'Créer ma tuile'}
-              </>
+              <><Sparkles className="w-4 h-4" />Analyser mes émotions</>
             )}
           </button>
         </div>

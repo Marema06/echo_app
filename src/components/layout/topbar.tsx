@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { EchoLogo } from '@/components/ui/echo-logo';
-import { BarChart3, LogOut, Plus } from 'lucide-react';
+import { BarChart3, LogOut, Plus, CalendarDays, UserCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { createClient } from '@/lib/supabase/client';
 
@@ -21,6 +21,8 @@ export function Topbar() {
   const navItems = [
     { href: '/dashboard', label: 'Mosaïque' },
     { href: '/stats', label: 'Stats', icon: BarChart3 },
+    { href: '/calendar', label: 'Calendrier', icon: CalendarDays },
+    { href: '/profile', label: 'Profil', icon: UserCircle },
   ];
 
   return (
@@ -34,7 +36,7 @@ export function Topbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-2.5">
+        <nav className="flex items-center gap-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -42,6 +44,7 @@ export function Topbar() {
               <Link
                 key={item.href}
                 href={item.href}
+                title={item.label}
                 className={`
                   border rounded-full px-4 py-2 text-sm transition-all
                   ${isActive

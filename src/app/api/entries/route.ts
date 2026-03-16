@@ -28,13 +28,25 @@ export async function GET(request: Request) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '20');
   const offset = (page - 1) * limit;
+  const emotion = searchParams.get('emotion');
+  const search = searchParams.get('search');
 
-  const { data: entries, error, count } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = supabase
     .from('entries')
     .select('*', { count: 'exact' })
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .order('created_at', { ascending: false });
+
+  if (emotion) {
+    query = query.filter('analysis->>dominantEmotion', 'eq', emotion);
+  }
+
+  if (search) {
+    query = query.ilike('text', `%${search}%`);
+  }
+
+  const { data: entries, error, count } = await query.range(offset, offset + limit - 1);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

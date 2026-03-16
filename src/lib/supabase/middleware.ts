@@ -29,26 +29,31 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { pathname } = request.nextUrl;
+
   const isAuthPage =
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/signup') ||
-    request.nextUrl.pathname.startsWith('/forgot-password');
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password');
 
-  const isPublicPage =
-    request.nextUrl.pathname === '/' ||
-    isAuthPage;
+  const isPublicPage = pathname === '/' || pathname.startsWith('/upgrade') || isAuthPage;
 
-  // Redirect unauthenticated users to login (except public pages)
+  // Redirect unauthenticated users to login, preserving intended destination
   if (!user && !isPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
+    url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth pages to dashboard
+  // Redirect authenticated users away from auth pages
+  // Honor ?next param if present, otherwise go to dashboard
   if (user && isAuthPage) {
+    const next = request.nextUrl.searchParams.get('next');
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = next && next.startsWith('/') ? next : '/dashboard';
+    url.search = '';
     return NextResponse.redirect(url);
   }
 

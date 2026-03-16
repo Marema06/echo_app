@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 
 const analyzeSchema = z.object({
   text: z.string().min(50).max(2000),
@@ -243,7 +244,13 @@ async function analyzeWithClaude(text: string) {
 // Main handler - tries Claude first, falls back to local
 // ============================================================
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'anonymous';
+  const { allowed } = rateLimit(`analyze:${ip}`, 10, 60_000); // 10 req/min
+  if (!allowed) {
+    return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans une minute.' }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
     const parsed = analyzeSchema.safeParse(body);
