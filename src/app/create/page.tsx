@@ -15,6 +15,24 @@ import { VISUALIZATION_STYLES, EMOTION_COLORS, type VisualizationStyle, type Ana
 type ImageMode = 'canvas' | 'ai';
 type Step = 'write' | 'preview';
 
+interface ResonanceEntry {
+  id: string;
+  text: string;
+  created_at: string;
+  analysis: Analysis;
+  visualization_url: string;
+}
+
+function timeAgo(dateStr: string): string {
+  const diffDays = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
+  if (diffDays === 0) return "aujourd'hui";
+  if (diffDays === 1) return 'hier';
+  if (diffDays < 7) return `il y a ${diffDays} jours`;
+  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)} semaine${Math.floor(diffDays / 7) > 1 ? 's' : ''}`;
+  if (diffDays < 365) return `il y a ${Math.floor(diffDays / 30)} mois`;
+  return `il y a ${Math.floor(diffDays / 365)} an${Math.floor(diffDays / 365) > 1 ? 's' : ''}`;
+}
+
 const VALENCE_LABEL: Record<string, string> = {
   positive: 'Positive',
   negative: 'Négative',
@@ -38,6 +56,7 @@ export default function CreatePage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [visualizationUrl, setVisualizationUrl] = useState('');
   const [error, setError] = useState('');
+  const [resonanceEntries, setResonanceEntries] = useState<ResonanceEntry[]>([]);
   const router = useRouter();
   const toast = useToast();
 
@@ -106,6 +125,16 @@ export default function CreatePage() {
 
       setAnalysis(result);
       setVisualizationUrl(vizUrl);
+
+      // Fetch resonance entries (same dominant emotion, past entries)
+      try {
+        const resRes = await fetch(`/api/entries?emotion=${encodeURIComponent(result.dominantEmotion)}&limit=3`);
+        if (resRes.ok) {
+          const resData = await resRes.json();
+          setResonanceEntries(resData.entries || []);
+        }
+      } catch { /* fail silently */ }
+
       setStep('preview');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
@@ -244,6 +273,33 @@ export default function CreatePage() {
                     <span key={kw} className="px-3 py-1 rounded-full bg-ink-900/[0.06] text-ink-600 dark:text-ink-400 text-xs">
                       {kw}
                     </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resonance temporelle */}
+            {resonanceEntries.length > 0 && (
+              <div className="space-y-3 pt-1">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-ink-400">Résonances passées</p>
+                  <p className="text-sm text-ink-500 mt-0.5">
+                    Tu as déjà ressenti <span className="font-medium capitalize" style={{ color: EMOTION_COLORS[analysis.dominantEmotion as EmotionName]?.[0] }}>{analysis.dominantEmotion}</span>...
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {resonanceEntries.map(entry => (
+                    <div key={entry.id} className="flex gap-3 items-start p-3 rounded-2xl bg-ink-50/60 dark:bg-ink-800/30 border border-ink-100/80 dark:border-ink-700/40">
+                      <img
+                        src={entry.visualization_url}
+                        alt=""
+                        className="w-10 h-10 rounded-xl object-cover shrink-0 opacity-80"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs text-ink-400 mb-0.5">{timeAgo(entry.created_at)}</p>
+                        <p className="text-sm text-ink-600 dark:text-ink-400 line-clamp-2">{entry.text}</p>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

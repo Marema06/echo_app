@@ -7,6 +7,8 @@ import { useToast } from '@/components/ui/toast';
 import { VISUALIZATION_STYLES, type VisualizationStyle } from '@/types';
 import { User, Mail, Calendar, Flame, BookOpen, Palette } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { EmotionalPortrait } from '@/components/ui/emotional-portrait';
+import { EMOTION_COLORS, type EmotionName } from '@/types';
 
 interface ProfileData {
   email: string;
@@ -21,6 +23,9 @@ interface ProfileData {
 interface StatsData {
   totalEntries: number;
   streak: number;
+  avgIntensity?: number;
+  mostFrequent?: [string, number] | null;
+  emotionCounts?: Record<string, number>;
   empty?: boolean;
 }
 
@@ -144,6 +149,64 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* Emotional Portrait */}
+            {stats && !stats.empty && stats.emotionCounts && Object.keys(stats.emotionCounts).length > 0 && (
+              <div className="bg-surface-glass rounded-3xl p-6 shadow-soft">
+                <p className="text-xs uppercase tracking-wider text-ink-400 mb-5">Votre ADN émotionnel</p>
+                <div className="flex flex-col sm:flex-row gap-6 items-center">
+                  <div className="shrink-0">
+                    <EmotionalPortrait
+                      emotionCounts={stats.emotionCounts}
+                      size={180}
+                      className="rounded-full"
+                    />
+                  </div>
+                  <div className="space-y-3 text-center sm:text-left">
+                    <div>
+                      <h3 className="font-serif text-xl leading-snug">
+                        {stats.mostFrequent ? (
+                          <>Votre émotion dominante est{' '}
+                            <span
+                              className="capitalize"
+                              style={{ color: EMOTION_COLORS[stats.mostFrequent[0] as EmotionName]?.[0] }}
+                            >
+                              {stats.mostFrequent[0]}
+                            </span>
+                          </>
+                        ) : 'Portrait unique'}
+                      </h3>
+                      <p className="text-sm text-ink-500 mt-1">
+                        Ce portrait évolue à chaque entrée, reflétant fidèlement votre paysage intérieur.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                      {Object.entries(stats.emotionCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5)
+                        .map(([emotion, count]) => {
+                          const color = EMOTION_COLORS[emotion as EmotionName]?.[0] ?? '#94a3b8';
+                          return (
+                            <span
+                              key={emotion}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                              style={{
+                                color,
+                                borderColor: `${color}33`,
+                                backgroundColor: `${color}12`,
+                              }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                              <span className="capitalize">{emotion}</span>
+                              <span className="opacity-60">×{count}</span>
+                            </span>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Activity */}
             <div className="bg-surface-glass rounded-3xl p-6 shadow-soft">
