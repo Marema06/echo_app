@@ -9,7 +9,18 @@
       "Bash(powershell.exe -Command \":*)",
       "Bash(powershell.exe -Command \"cd ''C:\\\\Users\\\\msarr\\\\echo-app''; git push origin main\")",
       "Bash(npx tsc --noEmit)",
-      "Bash(powershell -Command \"\\(Get-Content src\\\\app\\\\calendar\\\\page.tsx\\) -replace ''pb-12'', ''pb-24 sm:pb-12'' | Set-Content src\\\\app\\\\calendar\\\\page.tsx; \\(Get-Content src\\\\app\\\\profile\\\\page.tsx\\) -replace ''pb-12'', ''pb-24 sm:pb-12'' | Set-Content src\\\\app\\\\profile\\\\page.tsx; \\(Get-Content src\\\\app\\\\letters\\\\page.tsx\\) -replace ''pb-12'', ''pb-24 sm:pb-12'' | Set-Content src\\\\app\\\\letters\\\\page.tsx; \\(Get-Content src\\\\app\\\\stats\\\\page.tsx\\) -replace ''\"\"min-h-screen bg-background pb-12\"\"'', ''\"\"min-h-screen bg-background pb-24 sm:pb-12\"\"'' | Set-Content src\\\\app\\\\stats\\\\page.tsx\")"
+      "Bash(powershell -Command \"\\(Get-Content src\\\\app\\\\calendar\\\\page.tsx\\) -replace ''pb-12'', ''pb-24 sm:pb-12'' | Set-Content src\\\\app\\\\calendar\\\\page.tsx; \\(Get-Content src\\\\app\\\\profile\\\\page.tsx\\) -replace ''pb-12'', ''pb-24 sm:pb-12'' | Set-Content src\\\\app\\\\profile\\\\page.tsx; \\(Get-Content src\\\\app\\\\letters\\\\page.tsx\\) -replace ''pb-12'', ''pb-24 sm:pb-12'' | Set-Content src\\\\app\\\\letters\\\\page.tsx; \\(Get-Content src\\\\app\\\\stats\\\\page.tsx\\) -replace ''\"\"min-h-screen bg-background pb-12\"\"'', ''\"\"min-h-screen bg-background pb-24 sm:pb-12\"\"'' | Set-Content src\\\\app\\\\stats\\\\page.tsx\")",
+      "Bash(git push --set-upstream origin main)",
+      "Bash(gh browse --no-browser)",
+      "Bash(gh api repos/Marema06/echo_app/deployments --jq '.[0].environment')",
+      "Bash(npx vercel ls)",
+      "Bash(npx vercel ls --token=\"\")",
+      "Bash(gh api repos/Marema06/echo_app --jq '.homepage')",
+      "Bash(npx vercel --prod)",
+      "Bash(npx vercel login)",
+      "Bash(git add .)",
+      "Bash(git commit -m \"fix: rename icon route to .tsx for JSX support\")",
+      "Bash(git push)"
     ]
   }
 }
