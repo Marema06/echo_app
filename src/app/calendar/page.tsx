@@ -122,7 +122,7 @@ export default function CalendarPage() {
   const emotions: EmotionName[] = ['joie', 'tristesse', 'sérénité', 'anxiété', 'espoir', 'colère', 'nostalgie', 'peur', 'surprise', 'frustration'];
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-screen bg-background pb-24 sm:pb-12">
       <Topbar />
       <main className="max-w-[1200px] mx-auto px-6 py-8 space-y-8">
 

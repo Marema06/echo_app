@@ -90,7 +90,7 @@ export default function ProfilePage() {
   }) : '';
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-screen bg-background pb-24 sm:pb-12">
       <Topbar />
       <main className="max-w-[760px] mx-auto px-6 py-8 space-y-5">
 

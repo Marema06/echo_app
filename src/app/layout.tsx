@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: "ECHO. - Journal émotionnel artistique",
   description: "Transformez vos émotions en visualisations artistiques via IA. Un journal émotionnel qui sculpte vos ressentis en mosaïque vivante.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ECHO.",
+  },
   openGraph: {
     title: "ECHO. - Journal émotionnel artistique",
     description: "Transformez vos émotions en visualisations artistiques via IA.",
@@ -19,6 +24,9 @@ export const viewport: Viewport = {
   themeColor: "#0f172a",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -34,6 +42,12 @@ export default function RootLayout({
             __html: `(function(){var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()`,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js')})}`,
+          }}
+        />
+        <link rel="apple-touch-icon" href="/api/icon?size=180" />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
         <ThemeProvider>

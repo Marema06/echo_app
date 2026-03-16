@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Topbar } from '@/components/layout/topbar';
 import { StatsSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
-import { BarChart3, Download, Sparkles, Loader2, CalendarDays } from 'lucide-react';
+import { BarChart3, Download, Sparkles, Loader2, CalendarDays, FileText } from 'lucide-react';
 import { type EmotionName, EMOTION_COLORS } from '@/types';
 import Link from 'next/link';
 
@@ -14,6 +14,7 @@ interface StatsData {
   mostFrequent: [string, number] | null;
   emotionCounts: Record<string, number>;
   monthlyData: Record<string, number>;
+  calendarData: Record<string, { emotion: string; intensity: number; count: number }>;
   streak: number;
   empty?: boolean;
 }
@@ -21,6 +22,8 @@ interface StatsData {
 interface EntryForExport {
   visualization_url: string;
   analysis: { dominantEmotion: string };
+  text: string;
+  created_at: string;
 }
 
 async function downloadMosaic(entries: EntryForExport[], toast: (msg: string, type?: 'success' | 'error' | 'info') => void) {
@@ -144,11 +147,45 @@ export default function StatsPage() {
     }
   }, [toast]);
 
+  const handlePdfExport = useCallback(async () => {
+    const res = await fetch('/api/entries?page=1&limit=500');
+    const data = await res.json();
+    const entries: EntryForExport[] = data.entries || [];
+    if (!entries.length) { toast('Aucune entrée à exporter', 'info'); return; }
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><title>ECHO. — Mon journal</title>
+<style>
+  body{font-family:Georgia,serif;max-width:680px;margin:0 auto;padding:40px 24px;color:#0f172a;background:#faf9f7}
+  h1{font-size:32px;font-weight:400;margin:0 0 4px}
+  .sub{color:#64748b;font-size:13px;margin:0 0 32px;font-family:sans-serif}
+  .entry{border-bottom:1px solid #e2e8f0;padding:24px 0}
+  .entry:last-child{border-bottom:none}
+  .emotion{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#64748b;margin:0 0 4px;font-family:sans-serif}
+  .date{color:#94a3b8;font-size:12px;font-family:sans-serif;margin:0 0 12px}
+  .text{font-size:15px;line-height:1.8;color:#334155;margin:0;white-space:pre-wrap}
+  button{margin-bottom:32px;padding:10px 24px;background:#0f172a;color:#fff;border:none;border-radius:999px;font-size:13px;cursor:pointer;font-family:sans-serif}
+  @media print{button{display:none}}
+</style></head><body>
+<h1>ECHO.</h1>
+<p class="sub">Journal émotionnel — ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+<button onclick="window.print()">Enregistrer en PDF</button>
+${entries.map(e => `<div class="entry">
+  <p class="emotion">${e.analysis.dominantEmotion}</p>
+  <p class="date">${new Date(e.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+  <p class="text">${(e.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+</div>`).join('')}
+</body></html>`);
+    win.document.close();
+  }, [toast]);
+
   const maxCount = stats ? Math.max(...Object.values(stats.emotionCounts)) : 1;
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-screen bg-background pb-24 sm:pb-12">
       <Topbar />
       <main className="max-w-[1200px] mx-auto px-6 py-8 space-y-6">
 
@@ -263,6 +300,42 @@ export default function StatsPage() {
               </div>
             </div>
 
+            {/* Tendances 30 jours */}
+            {stats.calendarData && Object.keys(stats.calendarData).length > 0 && (() => {
+              const last30 = Array.from({ length: 30 }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (29 - i));
+                return d.toISOString().split('T')[0];
+              });
+              return (
+                <div className="bg-surface-glass rounded-3xl p-5 shadow-soft">
+                  <h3 className="text-xs uppercase tracking-wider text-ink-400 mb-5">Tendances — 30 derniers jours</h3>
+                  <div className="flex items-end gap-0.5 h-20">
+                    {last30.map((date, i) => {
+                      const day = stats.calendarData?.[date];
+                      if (!day) {
+                        return <div key={i} className="flex-1 rounded-t-sm bg-ink-200/40 dark:bg-ink-700/30" style={{ height: '4px' }} />;
+                      }
+                      const pct = Math.max((day.intensity / 10) * 100, 8);
+                      const color = EMOTION_COLORS[day.emotion as EmotionName]?.[0] ?? '#94a3b8';
+                      return (
+                        <div
+                          key={i}
+                          className="flex-1 rounded-t-sm transition-all duration-500"
+                          style={{ height: `${pct}%`, backgroundColor: color, minHeight: '6px' }}
+                          title={`${date} · ${day.emotion} · ${day.intensity}/10`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between mt-2 text-[10px] text-ink-400">
+                    <span>il y a 30j</span>
+                    <span>aujourd&apos;hui</span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Rétrospective IA — mensuelle + annuelle */}
             <div className="bg-surface-glass rounded-3xl p-6 shadow-soft space-y-5">
               <div>
@@ -356,17 +429,27 @@ export default function StatsPage() {
                   <h3 className="font-serif text-xl">Télécharger ma mosaïque</h3>
                   <p className="text-sm text-white/70 mt-1">Générez une image PNG de toutes vos tuiles émotionnelles.</p>
                 </div>
-                <button
-                  onClick={handleExport}
-                  disabled={exportLoading}
-                  className="inline-flex items-center gap-2 bg-white text-ink-900 rounded-full py-2.5 px-5 text-sm font-medium
-                             hover:-translate-y-0.5 transition-all shadow-pop shrink-0 disabled:opacity-60 disabled:hover:translate-y-0"
-                >
-                  {exportLoading
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Export...</>
-                    : <><Download className="w-4 h-4" /> Exporter en PNG</>
-                  }
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <button
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    className="inline-flex items-center gap-2 bg-white text-ink-900 rounded-full py-2.5 px-5 text-sm font-medium
+                               hover:-translate-y-0.5 transition-all shadow-pop disabled:opacity-60 disabled:hover:translate-y-0"
+                  >
+                    {exportLoading
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Export...</>
+                      : <><Download className="w-4 h-4" /> PNG</>
+                    }
+                  </button>
+                  <button
+                    onClick={handlePdfExport}
+                    className="inline-flex items-center gap-2 bg-white/10 text-white border border-white/20 rounded-full py-2.5 px-5 text-sm font-medium
+                               hover:-translate-y-0.5 transition-all"
+                  >
+                    <FileText className="w-4 h-4" />
+                    PDF
+                  </button>
+                </div>
               </div>
             </div>
 

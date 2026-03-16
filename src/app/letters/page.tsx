@@ -55,7 +55,7 @@ export default function LettersPage() {
   const sent = letters.filter(l => l.sent);
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-screen bg-background pb-24 sm:pb-12">
       <Topbar />
       <main className="max-w-[640px] mx-auto px-6 py-8 space-y-6">
         <div>

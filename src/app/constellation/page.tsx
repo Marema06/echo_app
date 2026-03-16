@@ -6,6 +6,19 @@ import { EMOTION_COLORS, type EmotionName, type Entry } from '@/types';
 import { X, Calendar, Zap } from 'lucide-react';
 import Link from 'next/link';
 
+const EMOTION_COLOR_MEANING: Record<string, string> = {
+  joie:        'Jaune & orange — soleil, énergie, chaleur',
+  tristesse:   'Bleu profond — mélancolie, intériorité',
+  colère:      'Rouge vif — intensité, feu intérieur',
+  peur:        'Noir & vert sombre — obscurité, instinct',
+  sérénité:    'Vert pâle & bleu ciel — nature, apaisement',
+  surprise:    'Jaune & rose — vivacité, l\'inattendu',
+  nostalgie:   'Mauve & violet — rêverie, mémoire',
+  anxiété:     'Gris — brume, incertitude',
+  espoir:      'Bleu ciel & or — aube, lumière à venir',
+  frustration: 'Orange & rouge — tension retenue',
+};
+
 interface Star {
   id: string;
   x: number;
@@ -191,16 +204,16 @@ export default function ConstellationPage() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Recompute stars
-  useEffect(() => {
-    if (!entries.length || !size.w) return;
-    starsRef.current = computeStars(entries, size.w, size.h);
-  }, [entries, size]);
-
-  // Animation loop
+  // Canvas setup + star computation + animation — all in one effect so stars
+  // are always computed before the loop starts, and the effect re-runs when
+  // entries load (canvas only mounts after entries arrive).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !size.w) return;
+
+    // Compute stars synchronously before the first frame
+    starsRef.current = entries.length ? computeStars(entries, size.w, size.h) : [];
+
     const dpr = window.devicePixelRatio || 1;
     canvas.width = size.w * dpr;
     canvas.height = size.h * dpr;
@@ -215,7 +228,7 @@ export default function ConstellationPage() {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [size]);
+  }, [entries, size]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -277,7 +290,10 @@ export default function ConstellationPage() {
                 <p className="font-semibold capitalize" style={{ color: hovered.color }}>
                   {hovered.entry.analysis.dominantEmotion}
                 </p>
-                <p className="text-white/40 mt-0.5">{fmt(hovered.entry.created_at)}</p>
+                <p className="text-white/30 mt-0.5 text-[10px] italic leading-relaxed">
+                  {EMOTION_COLOR_MEANING[hovered.entry.analysis.dominantEmotion]}
+                </p>
+                <p className="text-white/40 mt-1">{fmt(hovered.entry.created_at)}</p>
                 <p className="text-white/65 mt-1 line-clamp-2 leading-relaxed">{hovered.entry.text}</p>
               </div>
             )}
@@ -290,6 +306,9 @@ export default function ConstellationPage() {
                     <p className="text-[10px] text-white/35 uppercase tracking-widest">Entrée sélectionnée</p>
                     <p className="font-semibold capitalize mt-1 text-base" style={{ color: selected.color }}>
                       {selected.entry.analysis.dominantEmotion}
+                    </p>
+                    <p className="text-white/30 text-[10px] italic mt-0.5 leading-relaxed">
+                      {EMOTION_COLOR_MEANING[selected.entry.analysis.dominantEmotion]}
                     </p>
                   </div>
                   <button onClick={() => setSelected(null)}

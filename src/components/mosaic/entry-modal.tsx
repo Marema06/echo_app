@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Calendar, Download, Trash2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Calendar, Download, Trash2, Share2, Check } from 'lucide-react';
 import { type Entry, EMOTION_COLORS, type EmotionName } from '@/types';
 import { generateVisualizationHD } from '@/lib/visualization';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -18,6 +18,8 @@ interface EntryModalProps {
 
 export function EntryModal({ entry, onClose, onPrev, onNext, onDelete, hasPrev, hasNext }: EntryModalProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shared, setShared] = useState(false);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (showConfirm) return; // don't navigate while confirm is open
@@ -54,6 +56,26 @@ export function EntryModal({ entry, onClose, onPrev, onNext, onDelete, hasPrev, 
   const handleDeleteConfirmed = () => {
     setShowConfirm(false);
     onDelete?.(entry.id);
+  };
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const res = await fetch('/api/entries/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryId: entry.id }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        const url = `${window.location.origin}/share/${data.token}`;
+        await navigator.clipboard.writeText(url);
+        setShared(true);
+        setTimeout(() => setShared(false), 3000);
+      }
+    } finally {
+      setSharing(false);
+    }
   };
 
   const emotionColor = EMOTION_COLORS[entry.analysis.dominantEmotion as EmotionName]?.[0] || '#94a3b8';
@@ -190,7 +212,7 @@ export function EntryModal({ entry, onClose, onPrev, onNext, onDelete, hasPrev, 
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-2 pt-2 border-t border-ink-100 dark:border-ink-800">
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-ink-100 dark:border-ink-800">
                 <button
                   onClick={handleDownload}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs border border-ink-200 dark:border-ink-700
@@ -198,6 +220,17 @@ export function EntryModal({ entry, onClose, onPrev, onNext, onDelete, hasPrev, 
                 >
                   <Download className="w-3.5 h-3.5" />
                   Télécharger HD
+                </button>
+                <button
+                  onClick={handleShare}
+                  disabled={sharing}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs border transition-colors ${
+                    shared
+                      ? 'border-green-200 dark:border-green-800/50 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                      : 'border-ink-200 dark:border-ink-700 text-ink-600 dark:text-ink-400 hover:bg-ink-50 dark:hover:bg-ink-800'
+                  }`}
+                >
+                  {shared ? <><Check className="w-3.5 h-3.5" /> Lien copié !</> : <><Share2 className="w-3.5 h-3.5" /> Partager</>}
                 </button>
                 {onDelete && (
                   <button
