@@ -7,6 +7,7 @@ import { EntryModal } from '@/components/mosaic/entry-modal';
 import { MosaicSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
 import { type Entry, EMOTION_COLORS, type EmotionName } from '@/types';
+import { createClient } from '@/lib/supabase/client';
 
 const EMOTION_FILTERS: { label: string; value: EmotionName }[] = [
   { label: 'Joie', value: 'joie' },
@@ -24,6 +25,7 @@ const EMOTION_FILTERS: { label: string; value: EmotionName }[] = [
 export default function DashboardPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [firstName, setFirstName] = useState<string>('');
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [page, setPage] = useState(1);
@@ -59,6 +61,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchEntries(1, null, '');
+    // Récupère le prénom de l'utilisateur
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+      const name = fullName ? fullName.split(' ')[0] : user.email?.split('@')[0] || '';
+      setFirstName(name);
+    });
   }, [fetchEntries]);
 
   const applyFilter = useCallback((emotion: EmotionName | null, q: string) => {
@@ -210,7 +220,9 @@ export default function DashboardPage() {
       ) : entries.length === 0 && !hasActiveFilter ? (
         <div className="bg-surface-glass rounded-4xl p-10 shadow-soft space-y-8">
           <div className="text-center">
-            <h3 className="font-serif text-2xl">Bienvenue dans votre espace</h3>
+            <h3 className="font-serif text-2xl">
+              {firstName ? `Bonjour, ${firstName}.` : 'Bienvenue dans votre espace'}
+            </h3>
             <p className="text-ink-500 text-sm mt-2">Trois étapes pour créer votre première tuile émotionnelle.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
