@@ -36,3 +36,30 @@ self.addEventListener('fetch', e => {
     })
   );
 });
+
+// ── Push notifications ──────────────────────────────────────────────────────
+
+self.addEventListener('push', e => {
+  const data = e.data?.json() ?? {};
+  const title = data.title || 'ECHO.';
+  const options = {
+    body: data.body || 'Prenez un moment pour capturer votre ressenti du jour.',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-96.png',
+    data: { url: data.url || '/create' },
+    vibrate: [100, 50, 100],
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/create';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      const existing = windowClients.find(c => c.url.includes(url));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
+  );
+});

@@ -5,10 +5,11 @@ import { Topbar } from '@/components/layout/topbar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
 import { VISUALIZATION_STYLES, type VisualizationStyle } from '@/types';
-import { User, Mail, Calendar, Flame, BookOpen, Palette } from 'lucide-react';
+import { User, Mail, Calendar, Flame, BookOpen, Palette, Bell, BellOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { EmotionalPortrait } from '@/components/ui/emotional-portrait';
 import { EMOTION_COLORS, type EmotionName } from '@/types';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
 
 interface ProfileData {
   email: string;
@@ -36,6 +37,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [defaultStyle, setDefaultStyle] = useState<VisualizationStyle>('aquarelle');
   const toast = useToast();
+  const push = usePushNotifications();
 
   useEffect(() => {
     async function load() {
@@ -225,6 +227,44 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* Notifications */}
+            {push.state !== 'unsupported' && (
+              <div className="bg-surface-glass rounded-3xl p-6 shadow-soft">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-ink-900/[0.06] dark:bg-ink-50/10 flex items-center justify-center shrink-0">
+                      <Bell className="w-5 h-5 text-ink-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-ink-800 dark:text-ink-200">Rappels quotidiens</p>
+                      <p className="text-xs text-ink-400 mt-0.5">
+                        {push.state === 'subscribed'
+                          ? 'Vous recevrez un rappel chaque soir pour journaliser.'
+                          : push.state === 'denied'
+                          ? 'Notifications bloquées dans votre navigateur.'
+                          : 'Activez les notifications pour ne jamais oublier de journaliser.'}
+                      </p>
+                    </div>
+                  </div>
+                  {push.state !== 'denied' && (
+                    <button
+                      onClick={push.state === 'subscribed' ? push.unsubscribe : push.subscribe}
+                      disabled={push.loading}
+                      className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all
+                        ${push.state === 'subscribed'
+                          ? 'bg-ink-100 dark:bg-ink-800 text-ink-600 dark:text-ink-400 hover:bg-ink-200'
+                          : 'bg-ink-900 dark:bg-ink-50 text-white dark:text-ink-900 hover:-translate-y-0.5 shadow-pop'}
+                        disabled:opacity-50 disabled:hover:translate-y-0`}
+                    >
+                      {push.state === 'subscribed'
+                        ? <><BellOff className="w-4 h-4" /> Désactiver</>
+                        : <><Bell className="w-4 h-4" /> Activer</>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Preferences */}
             <div className="bg-surface-glass rounded-3xl p-6 shadow-soft space-y-4">
