@@ -18,7 +18,7 @@ function SignupContent() {
   const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') ?? '/dashboard';
+  const next = searchParams.get('next') ?? '/onboarding';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +113,7 @@ function SignupContent() {
                 </div>
               )}
 
-              <GoogleButton next={next} />
+              <GoogleButton next="/onboarding" />
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-ink-200 dark:bg-ink-700" />
